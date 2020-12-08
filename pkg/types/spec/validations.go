@@ -43,7 +43,6 @@ import (
 	"github.com/cortexlabs/cortex/pkg/types"
 	"github.com/cortexlabs/cortex/pkg/types/clusterconfig"
 	"github.com/cortexlabs/cortex/pkg/types/userconfig"
-	"github.com/cortexlabs/yaml"
 	dockertypes "github.com/docker/docker/api/types"
 	kresource "k8s.io/apimachinery/pkg/api/resource"
 )
@@ -676,11 +675,12 @@ func ExtractAPIConfigs(
 		api.Index = i
 		api.FileName = configFileName
 
-		rawYAMLBytes, err := yaml.Marshal([]map[string]interface{}{data})
-		if err != nil {
-			return nil, errors.Wrap(err, api.Identify())
+		interfaceMap, ok := cast.JSONMarshallable(data)
+		if !ok {
+			return nil, errors.ErrorUnexpected("unable to cast api spec to json") // unexpected
 		}
-		api.RawYAMLBytes = rawYAMLBytes
+
+		api.SubmittedAPISpec = interfaceMap
 
 		if resourceStruct.Kind == userconfig.RealtimeAPIKind || resourceStruct.Kind == userconfig.BatchAPIKind {
 			api.ApplyDefaultDockerPaths()
@@ -701,6 +701,11 @@ func ValidateAPI(
 	gcpClient *gcp.Client,
 	k8sClient *k8s.Client, // will be nil for local provider
 ) error {
+
+	// if models is nil, we need to set it to an empty slice to avoid nil pointer exceptions
+	if models == nil {
+		models = &[]CuratedModelResource{}
+	}
 
 	if provider != types.LocalProviderType && api.Networking.Endpoint == nil {
 		api.Networking.Endpoint = pointer.String("/" + api.Name)

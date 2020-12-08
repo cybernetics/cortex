@@ -38,7 +38,6 @@ import (
 
 type ProjectFiles struct {
 	ProjectByteMap map[string][]byte
-	ConfigFileName string
 }
 
 func (projectFiles ProjectFiles) AllPaths() []string {
@@ -102,8 +101,7 @@ func ValidateClusterAPIs(apis []userconfig.API, projectFiles spec.ProjectFiles) 
 	for i := range apis {
 		api := &apis[i]
 		if api.Kind == userconfig.RealtimeAPIKind || api.Kind == userconfig.BatchAPIKind {
-			models := []spec.CuratedModelResource{}
-			if err := spec.ValidateAPI(api, &models, projectFiles, config.Provider, config.AWS, config.GCP, config.K8s); err != nil {
+			if err := spec.ValidateAPI(api, nil, projectFiles, config.Provider, config.AWS, config.GCP, config.K8s); err != nil {
 				return errors.Wrap(err, api.Identify())
 			}
 			if err := validateK8s(api, virtualServices, maxMem); err != nil {
